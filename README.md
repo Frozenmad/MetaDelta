@@ -1,4 +1,4 @@
-# Codebase for AAAI 2021 Workshop MetaDL Competition from Meta_Learner
+# MetaDelta: A Meta-Learning System for Few-shot Image Classification
 
 _note: this version is only for publication, we will re-organize and clean our code for better research use later_
 
