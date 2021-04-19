@@ -151,12 +151,3 @@ class timer():
     def end(self, name):
         self.anchor(name, end=True)
         return self.named_time[name]['time_period'][-1]
-
-def get_base_class_number():
-    return 70
-
-def get_root(path = None):
-    root = os.path.abspath(os.path.join(os.path.dirname(__name__), '../../'))
-    if path is None:
-        return root
-    return os.path.join(root, path)

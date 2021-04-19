@@ -14,10 +14,9 @@ from src.utils.utils import timer
 import torch.multiprocessing as mp
 import threading
 from torch.multiprocessing import Pipe
-from multiprocessing.dummy import Pool as ThreadPool
 from metadl.api.api import MetaLearner, Learner, Predictor
 from itertools import cycle
-from src.utils.utils import process_task_batch, to_torch, get_base_class_number
+from src.utils.utils import process_task_batch, to_torch
 from src.utils import logger
 from src.ensemble import GBMEnsembler, GLMEnsembler, NBEnsembler, RFEnsembler
 import signal
@@ -139,13 +138,16 @@ class MyMetaLearner(MetaLearner):
             valid_send.append(send)
 
         def apply_device_to_hp(hp, device):
-            hp['device'] = 'cuda:{}'.format(device)
+            if isinstance(device, str):
+                hp['device'] = device
+            else:
+                hp['device'] = 'cuda:{}'.format(device)
             return hp
         
         self.timer.end('build data pipeline')
 
         self.timer.begin('build main proc pipeline')
-        clsnum = get_base_class_number(meta_dataset_generator)
+        clsnum = self.class_number
         LOGGER.info('base class number detected', clsnum)
         procs = [mp.Process(
             target=run_exp,
@@ -210,7 +212,7 @@ class MyMetaLearner(MetaLearner):
                 try:
                     if train_send[i].recv():
                         supp, quer = train_data_reservoir[i].get()
-                        data = self.modules[i].process_data(supp, quer, True, self.hp[i])
+                        data = self.modules[i].process_data(supp, quer, self.hp[i], True)
                         train_send[i].send(data)
                     else:
                         return
@@ -222,7 +224,7 @@ class MyMetaLearner(MetaLearner):
                 try:
                     if valid_send[i].recv():
                         supp, quer = valid_data_reservoir[i].get()
-                        data = self.modules[i].process_data(supp, quer, False, self.hp[i])
+                        data = self.modules[i].process_data(supp, quer, self.hp[i], False)
                         valid_send[i].send(data)
                     else:
                         return
@@ -440,7 +442,7 @@ class MyLearner(Learner):
             LOGGER.info('time left for test', self.timer.time_left())
             def load_sub_model(i):
                 module = self.modules[i]
-                learner = module.MyMultiManager(None, self.hp[i])
+                learner = module.MyMultiManager(self.hp[i], None)
                 learner.load(os.path.join(path_to_model, str(i)))
                 self.learner[i] = learner
             pool = [threading.Thread(target=load_sub_model, args=(i,)) for i in range(data['num_learner'])]

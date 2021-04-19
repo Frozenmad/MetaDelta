@@ -4,7 +4,6 @@ t1 = time.time()
 import json
 import os
 from copy import deepcopy
-os.environ['CUDA_VISIBLE_DEVICES']='0,1,2,3'
 os.system('ulimit -HSn 4096')
 try:
     import torch
@@ -40,7 +39,10 @@ if config['epochs'] == 'auto':
     config['epochs'] = prototype_multi.MAX_LOCAL_EPOCH
 
 def apply_device(conf: Dict, device, global_id, **kwargs):
-    conf['device'] = 'cuda:{}'.format(device)
+    if isinstance(device, str) and ('cuda' in device or 'cpu' in device):
+        conf['device'] = device
+    else:
+        conf['device'] = 'cuda:{}'.format(device)
     conf['global_id'] = global_id
     conf.update(kwargs)
     return conf
@@ -57,7 +59,8 @@ multiprocess.GLOBAL_CONFIG = {
     'eval_tasks': 200,
     'ensemble': 'all',
     'multiprocess': True or config['multiprocess'],
-    'begin_time_stamp': t1
+    'begin_time_stamp': t1,
+    'class_number': 1623 # TODO: change this class number to your dataset setting
 }
 
 LOGGER.info(multiprocess.GLOBAL_CONFIG)

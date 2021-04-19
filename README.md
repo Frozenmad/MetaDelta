@@ -13,7 +13,7 @@ lightgbm
 ```
 You can run the metadl test using this repo directly which will help you handle the environments above automatically.
 
-## Run the code
+## Run the code under competition setting
 
 First, you need to activate your environments:
 ```
@@ -25,6 +25,14 @@ Anywhere outside this folder, make a new folder and cd to it. Then you can run t
 $ mkdir paths/to/your/runtime/folder
 $ cd paths/to/your/runtime/folder
 $ python -m metadl.core.run --meta_dataset_dir=abs/path/to/dataset --code_dir=abs/path/to/this/folder
+```
+
+## Customize to other dataset setting
+
+The running method is the same. You just need to change the class number in model.py line 63.
+
+```python
+    'class_number': xxx # change to your total num_class in meta-train dataset
 ```
 
 __@AutoMLGroup/Meta_Learners__

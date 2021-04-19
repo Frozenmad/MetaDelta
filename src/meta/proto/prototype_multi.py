@@ -74,32 +74,11 @@ def mct_label_propagation(query, supp, cal_distance=param_free_distance_cal, sho
         prob_list.append(prob)
     return torch.log(prob_list[-1] + 1e-6)
 
-gconfig = {
-    'device': 'cuda:0',
-    'pretrain_lr': 0.0001,
-    'eval_epoch': 10,
-    'eval_tasks': 200,
-    'batch_size': 32,
-    'lr': 0.0001,
-    'epochs': 20000,
-    'patience': 20,
-    'clip_norm': 1.0,
-    'use_pretrain': True,
-    'pretrain_epoch': 20000,
-    'cls_type': 'linear',
-    'train_way': 5,
-    'pretrain_shot': 2,
-    'first_eval': 0,
-    'rotation': True,   # pretrain with 'rotation' loss (in Phase #2)
-    'way': 32,    # TODO: keep consistent with config.gin
-    "global_id": 0
-}
-
 def normalize(emb):
     emb = emb / emb.norm(dim=1)[:,None]
     return emb
 
-def process_data(supp, query, train=True, config=gconfig):
+def process_data(supp, query, config, train=True):
     if train:
         # return [supp, query]
         # load train data
@@ -153,7 +132,7 @@ def decode_label(sx, qx, label_prop, prob=True):
     return lg
 
 class MyMetaLearner(ProtoMetaLearner):
-    def __init__(self, config=gconfig) -> None:
+    def __init__(self, config) -> None:
         self.__dict__.update(config)
         self.config = config
         self.logger = logger.get_logger('proto_{}'.format(self.global_id))
@@ -276,12 +255,9 @@ class MyMetaLearner(ProtoMetaLearner):
         torch.save({
             'model': self.model
         }, os.path.join(path, 'tmp.pt'))
-    
-    def make_learner(self):
-        return MyMultiManager(self.model)
 
 class MyMultiManager(ProtoMultiManager):
-    def __init__(self, model=None, config=gconfig) -> None:
+    def __init__(self, config, model=None) -> None:
         self.model = model
         self.config = config
         self.loaded = False
@@ -317,10 +293,10 @@ class MyMultiManager(ProtoMultiManager):
             lg = decode_label(supp_x, quer_x, 'mct', prob=True)
             return lg
 
-def load_model(config=gconfig):
+def load_model(config):
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'proto_{}'.format(config['global_id']))
     path_to_tmp = os.path.join(path, 'tmp.pt')
     m = torch.load(path_to_tmp)
-    device = torch.device(gconfig['device'])
+    device = torch.device(config['device'])
     model = m['model'].to(device)
-    return MyMultiManager(model, config)
+    return MyMultiManager(config, model)

@@ -1,13 +1,9 @@
 # base class for prototypical network setup
-import numpy as np
 import torch
-from src.utils import process_task_batch, timer, to_torch, set_seed, logger
-from metadl.api.api import Learner, MetaLearner, Predictor
-from metadl.data.dataset import DataGenerator
+from src.utils import timer, logger
+from metadl.api.api import MetaLearner
 import os
-from itertools import cycle
 import time
-from src.utils import get_base_class_number
 from src.utils import DataArgumentor
 
 class ProtoMetaLearner(MetaLearner):
@@ -111,9 +107,6 @@ class ProtoMetaLearner(MetaLearner):
             acc /= self.valid_tasks
             if acc > bestacc:
                 self.save_model()
-
-    def make_learner(self):
-        pass
 
     def eval_one_episode(self, supp, query):
         pass
