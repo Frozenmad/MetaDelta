@@ -1,32 +1,37 @@
-from copy import deepcopy
 import os
 import numpy as np
 import random
 import torch
 import tensorflow as tf
 import time
-from torchvision import transforms
-from itertools import cycle
+from meta_dataset.data.dataset_spec import BiLevelDatasetSpecification, DatasetSpecification
 
 def accuracy(predictions, targets):
     predictions = predictions.argmax(dim=1).view(targets.shape)
     return (predictions == targets).sum().float() / targets.size(0)
 
+
 def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
+    # torch.use_deterministic_algorithms(True)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     tf.random.set_seed(seed)
 
+
 def to_torch(source, dtype=None) -> torch.Tensor:
+    if not isinstance(source, np.ndarray):
+        source = source.numpy()
     if dtype is None:
-        return torch.from_numpy(source.numpy())
-    return torch.from_numpy(source.numpy()).to(dtype)
+        return torch.from_numpy(source)
+    return torch.from_numpy(source).to(dtype)
+
 
 def to_BCHW(source: torch.Tensor):
     return source.permute(0, 3, 1, 2)
+
 
 def process_task_batch_numpy(batch, with_origin_label=False):
     # supp  image: batch[0][0]: batch * (WAY * SHOT) * H * W * C
@@ -62,48 +67,35 @@ def process_task_batch(batch, device=torch.device('cuda:0'), with_origin_label=F
     
     return supp, query
 
+
 def mean(x):
     return sum(x) / len(x)
 
-class DataArgumentor():
-    def __init__(self, device=torch.device('cuda:0'), mean=None, std=None):
-        self.device = device
-        self.transforms_list = [
-            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(30)
-        ]
-        self.augmentation = transforms.Compose([
-            transforms.RandomResizedCrop(size=28, scale=(0.3, 1.0))
-        ])
-        self.mean = None
-        self.std = None
-        self.normalizer = None
-        self.updateMeanStd(mean, std)
-    
-    def updateMeanStd(self, mean, std):
-        self.mean = mean
-        self.std = std
-        if mean is not None and std is not None:
-            self.normalizer = transforms.Normalize(mean, std)
-    
-    def __call__(self, src):
-        src = self.augmentation(src)
-        if self.normalizer is not None:
-            src = self.normalizer(src)
-        return src
 
-class queue_sync():
-    def __init__(self, dataset) -> None:
-        self.meta_dataset = cycle(iter(dataset))
+class pipe_wrap():
+    def __init__(self, pipe, process, config, train):
+        self.process = process
+        self.pipe = pipe
+        self.train = train
+        self.config = config
     
-    def get(self):
-        data = next(self.meta_dataset)
-        return process_task_batch(data, device=torch.device('cpu'), with_origin_label=True)
+    def recv(self):
+        supp, quer = self.pipe.recv()
+        if self.process is not None:
+            res = self.process(supp, quer, self.train, self.config)
+        else:
+            res = [supp, quer]
 
-def build_queue_sync(meta_dataset_generator):
-    return queue_sync(meta_dataset_generator.meta_train_pipeline.batch(1)), queue_sync(meta_dataset_generator.meta_valid_pipeline.batch(1))
+        return res
     
+    def send(self, x):
+        self.pipe.send(x)
+
+    def set_path(self, path): pass
+    def begin_record(self): pass
+    def end_record(self): pass
+    def finish(self): pass
+
 
 class timer():
     def initialize(self, time_begin='auto', time_limit=60 * 100):
@@ -111,12 +103,6 @@ class timer():
         self.time_begin = time.time() if time_begin == 'auto' else time_begin
         self.time_list = [self.time_begin]
         self.named_time = {}
-        '''
-        'name' : {
-            'time_begin': xxx,
-            'time_period': [],
-        }
-        '''
         return self
 
     def anchor(self, name=None, end=None):
@@ -151,3 +137,22 @@ class timer():
     def end(self, name):
         self.anchor(name, end=True)
         return self.named_time[name]['time_period'][-1]
+
+
+def get_base_class_number(data_generator):
+    data_meta = data_generator.dataset_spec
+    if isinstance(data_meta, BiLevelDatasetSpecification):
+        info = data_meta.to_dict()
+        train_super_class = info['superclasses_per_split']['TRAIN']
+        return sum([info['classes_per_superclass'][x] for x in range(train_super_class)])
+    elif isinstance(data_meta, DatasetSpecification):
+        info = data_meta.to_dict()
+        return info['classes_per_split']['TRAIN']
+    raise ValueError('cannot parse class spec file')
+
+
+def get_root(path = None):
+    root = os.path.abspath(os.path.join(os.path.dirname(__name__), '../../'))
+    if path is None:
+        return root
+    return os.path.join(root, path)

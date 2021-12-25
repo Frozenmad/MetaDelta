@@ -18,3 +18,10 @@ class Ensembler():
 
     def predict(self, x):
         return self._predict(self._transform_x(x))
+    
+    def serialize(self):
+        raise NotImplementedError
+
+    @classmethod
+    def construct(cls, data):
+        raise NotImplementedError
