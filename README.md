@@ -2,23 +2,19 @@
 
 __News!__  
 - Serve as a baseline adopted for the Cross-Domain MetaDL competition!
+- We've removed all the multiprocessing and uncessary parts to make the logic nice and clean. For the full version, you can refer to the branch neurips2021 or aaai2021.
 
 ## Requirements
 
-Please follow [official websites](https://github.com/DustinCarrion/cd-metadl/tree/8c6128120ab8aac331c958b2965d42747d9dbdeb) to set-up environments.  
+Please follow the [official website](https://github.com/DustinCarrion/cd-metadl/tree/8c6128120ab8aac331c958b2965d42747d9dbdeb) to set-up environments.  
 
 ## Run the code under competition setting
 
-First, you need to activate your environments:
+Please follow the [official website](https://github.com/DustinCarrion/cd-metadl/tree/8c6128120ab8aac331c958b2965d42747d9dbdeb) to run the codes.  
+For example, cd to the folder of the cd-metadl, and run the following command:
 ```
-$ conda activate metadl
-```
-
-Anywhere outside this folder, make a new folder and cd to it. Then you can run the official code:
-```
-$ mkdir paths/to/your/runtime/folder
-$ cd paths/to/your/runtime/folder
-$ python -m metadl.core.run --meta_dataset_dir=abs/path/to/dataset --code_dir=abs/path/to/this/folder
+cd path/to/cd-metadl
+python -m cdmetadl.run --input_data_dir=public_data --submission_dir=/DATA/DATANAS1/guancy/github/MetaDelta --output_dir_ingestion=ingestion_output --output_dir_scoring=scoring_output --verbose=False --overwrite_previous_results=True --test_tasks_per_dataset=10
 ```
 
 __@AutoMLGroup/Meta_Learners__
