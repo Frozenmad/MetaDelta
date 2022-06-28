@@ -70,18 +70,14 @@ class MyMetaLearner(MetaLearner):
         times = self.timer.end('load pretrained model')
         LOGGER.info('current model', self.model)
         LOGGER.info('load time', times, 's')
-
-        self.model.set_mode(False)
-        self.dim = self.model(torch.randn(2, 3, 224, 224).to(self.device)).size()[-1]
-        self.model.set_mode(True)
-        self.logger.info('detect encoder dimension', self.dim)
+        self.dim = 2048
 
         # only optimize the last 2 layers
         backbone_parameters = []
         backbone_parameters.extend(self.model.set_get_trainable_parameters([3, 4]))
         # set learnable layers
         self.model.set_learnable_layers([3, 4])
-        self.cls = MLP(self.dim, train_classes).to(self.device)
+        self.cls = MLP(self.dim, train_classes).to(DEVICE)
         self.opt = optim.Adam(
             [
                 {"params": backbone_parameters},
@@ -105,10 +101,27 @@ class MyMetaLearner(MetaLearner):
 
         # loop until time runs out
         total_epoch = 0
-        best_valid = 0
-        best_param = None
+
+        # eval ahead
+        with torch.no_grad():
+            self.model.set_mode(False)
+            acc_valid = 0
+            for x, quer_y in valid_task:
+                x = x.to(DEVICE)
+                x = self.model(x)
+                supp_x, quer_x = x[:supp_end], x[supp_end:]
+
+                supp_x = supp_x.view(5, 5, supp_x.size(-1))
+                logit = decode_label(supp_x, quer_x).cpu().numpy()
+                acc_valid += (logit.argmax(1) == np.array(quer_y)).mean()
+            acc_valid /= len(valid_task)
+            LOGGER.info("epoch %2d valid mean acc %.6f" % (total_epoch, acc_valid))
+
+        best_valid = acc_valid
+        best_param = pickle.dumps(self.model.state_dict())
+
         self.cls.train()
-        for i in range(10):
+        for i in range(2):
             # train loop
             self.model.set_mode(True)
             for _ in range(5):
@@ -138,9 +151,12 @@ class MyMetaLearner(MetaLearner):
                     err += loss.item()
                     acc += logit.argmax(1).eq(y_train).float().mean()
 
+                backbone_parameters = []
+                backbone_parameters.extend(self.model.set_get_trainable_parameters([3, 4]))
+                torch.nn.utils.clip_grad.clip_grad_norm_(backbone_parameters + list(self.cls.parameters()), max_norm=5.0)
                 self.opt.step()
                 acc /= 10
-                LOGGER.info('epoch %2d error: %.6f acc %.6f | []: %.1f ->: %.1f <-: %.1f' % (
+                LOGGER.info('epoch %2d error: %.6f acc %.6f | time cost - dataload: %.1f forward: %.1f backward: %.1f' % (
                     total_epoch, err, acc,
                     self.timer.query_time_by_name("train data loading", method=lambda x:mean(x[-10:])),
                     self.timer.query_time_by_name("train forward", method=lambda x:mean(x[-10:])),
@@ -175,6 +191,7 @@ class MyLearner(Learner):
         super().__init__()
         self.model = model
 
+    @torch.no_grad()
     def fit(self, support_set) -> Predictor:
         self.model.to(DEVICE)
         X_train, y_train, _, n, k = support_set
@@ -196,6 +213,7 @@ class MyPredictor(Predictor):
         self.model = model
         self.other = [supp_x, supp_y, n, k]
 
+    @torch.no_grad()
     def predict(self, query_set: torch.Tensor) -> np.ndarray:
         query_set = query_set.to(DEVICE)
         supp_x, supp_y, n, k = self.other
@@ -204,4 +222,4 @@ class MyPredictor(Predictor):
         x = self.model(torch.cat([supp_x, query_set]))
         supp_x, quer_x = x[:end], x[end:]
         supp_x = supp_x.view(n, k, supp_x.size(-1))
-        return decode_label(supp_x, quer_x)
+        return decode_label(supp_x, quer_x).cpu().numpy()

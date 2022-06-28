@@ -12,11 +12,10 @@ def normalize(x):
 class MLP(nn.Module):
     def __init__(self, indim, outdim):
         super().__init__()
-        self.core = nn.Sequential([
+        self.core = nn.Sequential(
             nn.Linear(indim, indim // 2), nn.ReLU(),
             nn.Linear(indim // 2, indim // 2), nn.ReLU(),
-            nn.Linear(indim // 2, outdim)
-        ])
+            nn.Linear(indim // 2, outdim))
 
         for layer in self.modules():
             if isinstance(layer, nn.Linear):
