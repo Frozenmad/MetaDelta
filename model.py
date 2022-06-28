@@ -121,7 +121,7 @@ class MyMetaLearner(MetaLearner):
         best_param = pickle.dumps(self.model.state_dict())
 
         self.cls.train()
-        for i in range(2):
+        while self.timer.time_left() > 60 * 5:
             # train loop
             self.model.set_mode(True)
             for _ in range(5):
@@ -156,7 +156,7 @@ class MyMetaLearner(MetaLearner):
                 torch.nn.utils.clip_grad.clip_grad_norm_(backbone_parameters + list(self.cls.parameters()), max_norm=5.0)
                 self.opt.step()
                 acc /= 10
-                LOGGER.info('epoch %2d error: %.6f acc %.6f | time cost - dataload: %.1f forward: %.1f backward: %.1f' % (
+                LOGGER.info('epoch %2d error: %.6f acc %.6f | time cost - dataload: %.2f forward: %.2f backward: %.2f' % (
                     total_epoch, err, acc,
                     self.timer.query_time_by_name("train data loading", method=lambda x:mean(x[-10:])),
                     self.timer.query_time_by_name("train forward", method=lambda x:mean(x[-10:])),
@@ -195,7 +195,7 @@ class MyLearner(Learner):
     def fit(self, support_set) -> Predictor:
         self.model.to(DEVICE)
         X_train, y_train, _, n, k = support_set
-        X_train, y_train = X_train.to(DEVICE), y_train.to(DEVICE)
+        X_train, y_train = X_train, y_train
         
         return MyPredictor(self.model, X_train, y_train, n, k)
 
@@ -215,11 +215,18 @@ class MyPredictor(Predictor):
 
     @torch.no_grad()
     def predict(self, query_set: torch.Tensor) -> np.ndarray:
-        query_set = query_set.to(DEVICE)
+        query_set = query_set
         supp_x, supp_y, n, k = self.other
         supp_x = supp_x[supp_y.sort()[1]]
         end = supp_x.size(0)
-        x = self.model(torch.cat([supp_x, query_set]))
+        # to avoid too much gpu memory cost
+        x = torch.cat([supp_x, query_set])
+        begin_idx = 0
+        xs = []
+        while begin_idx < x.size(0):
+            xs.append(self.model(x[begin_idx: begin_idx + 64].to(DEVICE)).cpu())
+            begin_idx += 64
+        x = torch.cat(xs)
         supp_x, quer_x = x[:end], x[end:]
         supp_x = supp_x.view(n, k, supp_x.size(-1))
         return decode_label(supp_x, quer_x).cpu().numpy()
