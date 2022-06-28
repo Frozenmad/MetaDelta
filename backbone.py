@@ -1,8 +1,31 @@
 import torch
+import torch.nn as nn
 from torch.nn import Sequential, AdaptiveAvgPool2d, Identity, Module
 from typing import Iterable
-
 from torch.nn.modules.flatten import Flatten
+import timm
+from timm.models.resnet import ResNet
+
+def normalize(x):
+    return x / (1e-6 + x.pow(2).sum(dim=-1, keepdim=True).sqrt())
+
+class MLP(nn.Module):
+    def __init__(self, indim, outdim):
+        super().__init__()
+        self.core = nn.Sequential([
+            nn.Linear(indim, indim // 2), nn.ReLU(),
+            nn.Linear(indim // 2, indim // 2), nn.ReLU(),
+            nn.Linear(indim // 2, outdim)
+        ])
+
+        for layer in self.modules():
+            if isinstance(layer, nn.Linear):
+                torch.nn.init.xavier_uniform_(layer.weight)
+                torch.nn.init.zeros_(layer.bias)
+    
+    def forward(self, x):
+        return self.core(x)
+
 
 class SequentialModel(Module):
     def __init__(self, num_layers):
@@ -100,3 +123,17 @@ class Wrapper(Module):
         for layer in range(self.num_layers):
             x = self.model.layer_forward(x, layer)
         return self.model.finalize(x, layer + 1)
+
+class ResNetWrap(SimpleSequentialModel):
+    def __init__(self, model: ResNet):
+        layer0 = nn.Sequential(model.conv1, model.bn1, model.act1, model.maxpool)
+        super().__init__([layer0, model.layer1, model.layer2, model.layer3, model.layer4])
+
+def rn_timm_mix(pretrained=True, name='swsl_resnet50', momentum=0.1):
+    model = timm.create_model(name, pretrained=pretrained)
+    model = ResNetWrap(model)
+    print('model: rn_timm_mix, name:', name, 'layer num:', model.num_layers, 'momentum:', momentum)
+    for module in model.modules():
+        if isinstance(module, nn.BatchNorm2d):
+            module.momentum = momentum
+    return model

@@ -1,5 +1,0 @@
-DataGenerator.batch_config = None
-DataGenerator.episode_config = [128, 30, 5, 15]
-DataGenerator.valid_episode_config = [128, 5, 5, 15]
-DataGenerator.pool = 'train'
-DataGenerator.mode = 'episode'

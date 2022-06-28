@@ -1,12 +1,11 @@
 # MetaDelta++: Improve Generalization of Few-shot System Through Multi-Scale Pretrained Models and Improved Training Strategies
 
-_note: this version is only for publication, we will re-organize and clean our code for better research use later_
+__News!__  
+- Serve as a baseline adopted for the Cross-Domain MetaDL competition!
 
 ## Requirements
 
-Please follow [official websites](https://github.com/ebadrian/metadl/tree/master/starting_kit) to set-up environments. 
-
-Apart from the environments above, you also need to install the requirements listed in requirements.txt.
+Please follow [official websites](https://github.com/DustinCarrion/cd-metadl/tree/8c6128120ab8aac331c958b2965d42747d9dbdeb) to set-up environments.  
 
 ## Run the code under competition setting
 

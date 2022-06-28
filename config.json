@@ -1,13 +1,14 @@
 {
-    "eval_epoch": 5,
-    "eval_tasks": 50,
-    "batch_size": 10,
-    "fix_valid": true,
-    "lr_backbone": 1e-4,
-    "lr_head": 1e-3,
-    "epochs": 1000,
-    "patience": 1000,
-    "clip_norm": 5.0,
-    "pretrain_shot": 1,
-    "way": 30
+    "train_data_format": "batch",
+    "batch_size": 128,
+    "validation_datasets": 3,
+    "valid_config": {
+        "N": 5,
+        "min_N": null,
+        "max_N": null,
+        "k": 5,
+        "min_k": null,
+        "max_k": null,
+        "query_images_per_class": 5
+    }
 }
