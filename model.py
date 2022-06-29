@@ -181,6 +181,7 @@ class MyMetaLearner(MetaLearner):
             if best_valid < acc_valid:
                 # save the best model
                 best_param = pickle.dumps(self.model.state_dict())
+                best_valid = acc_valid
 
         self.model.load_state_dict(pickle.loads(best_param))
         return MyLearner(self.model.cpu())
