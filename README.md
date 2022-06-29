@@ -14,7 +14,9 @@ Please follow the [official website](https://github.com/DustinCarrion/cd-metadl/
 For example, cd to the folder of the cd-metadl, and run the following command:
 ```
 cd path/to/cd-metadl
-python -m cdmetadl.run --input_data_dir=public_data --submission_dir=/DATA/DATANAS1/guancy/github/MetaDelta --output_dir_ingestion=ingestion_output --output_dir_scoring=scoring_output --verbose=False --overwrite_previous_results=True --test_tasks_per_dataset=10
+python -m cdmetadl.run --input_data_dir=public_data --submission_dir=path/to/this/folder --output_dir_ingestion=ingestion_output --output_dir_scoring=scoring_output --verbose=False --overwrite_previous_results=True --test_tasks_per_dataset=10
 ```
+
+Remember to replace the `path/to/cd-metadl` and `path/to/this/folder` to your settings.
 
 __@AutoMLGroup/Meta_Learners__
